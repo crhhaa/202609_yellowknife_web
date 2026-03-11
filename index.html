@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>卡加利 & 班夫國家公園 景點地圖</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Helvetica Neue", Arial, "PingFang TC", "Microsoft JhengHei", sans-serif; background: #f0f4f8; }
+
+    h1 { text-align: center; padding: 16px; background: #1a3a5c; color: white; font-size: 1.3rem; letter-spacing: 0.05em; }
+
+    #container { display: flex; height: calc(100vh - 56px); }
+    #map { flex: 1; }
+
+    #sidebar {
+      width: 360px;
+      overflow-y: auto;
+      background: white;
+      box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+      padding: 0;
+    }
+
+    .section-title {
+      background: #1a3a5c;
+      color: white;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+    }
+
+    .location-card {
+      border-bottom: 1px solid #e8edf2;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .location-card:hover { background: #f0f7ff; }
+
+    .loc-header { display: flex; align-items: center; gap: 8px; }
+    .loc-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .loc-name { font-weight: bold; font-size: 0.95rem; color: #1a3a5c; }
+    .loc-name-en { font-size: 0.75rem; color: #888; margin-left: auto; }
+
+    .loc-details { margin-top: 6px; padding-left: 20px; }
+    .loc-details p { font-size: 0.8rem; color: #555; line-height: 1.6; }
+    .drive-tag {
+      display: inline-block;
+      background: #e8f4fd;
+      color: #1a6fa8;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 0.75rem;
+      margin: 2px 2px 2px 0;
+    }
+
+    /* Drive time matrix */
+    .matrix-section { padding: 12px 14px; }
+    .matrix-section h3 { font-size: 0.85rem; color: #1a3a5c; margin-bottom: 8px; font-weight: bold; }
+    table.drive-matrix {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.72rem;
+    }
+    table.drive-matrix th {
+      background: #1a3a5c;
+      color: white;
+      padding: 5px 6px;
+      text-align: center;
+    }
+    table.drive-matrix td {
+      padding: 5px 6px;
+      text-align: center;
+      border: 1px solid #dde;
+      color: #333;
+    }
+    table.drive-matrix tr:nth-child(even) td { background: #f5f8fc; }
+    table.drive-matrix td:first-child { font-weight: bold; background: #eef2f8; text-align: left; }
+
+    .note { font-size: 0.7rem; color: #999; padding: 6px 14px 10px; }
+
+    /* Fix Leaflet divIcon square background */
+    .leaflet-div-icon { background: transparent !important; border: none !important; }
+
+    /* Leaflet popup */
+    .popup-title { font-weight: bold; font-size: 1rem; color: #1a3a5c; }
+    .popup-en { font-size: 0.8rem; color: #888; }
+    .popup-body { margin-top: 6px; font-size: 0.82rem; line-height: 1.7; }
+    .popup-drives { margin-top: 6px; }
+    .popup-drives span {
+      display: inline-block;
+      background: #e8f4fd;
+      color: #1a6fa8;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 0.75rem;
+      margin: 2px 2px 0 0;
+    }
+  </style>
+</head>
+<body>
+
+<h1>卡加利 & 班夫國家公園 景點地圖</h1>
+
+<div id="container">
+  <div id="map"></div>
+  <div id="sidebar">
+    <div class="section-title">📍 卡加利周邊</div>
+
+    <div class="location-card" onclick="flyTo('yyc')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#e74c3c"></div>
+        <span class="loc-name">卡加利國際機場</span>
+        <span class="loc-name-en">YYC</span>
+      </div>
+      <div class="loc-details">
+        <p>➡ 市中心 <span class="drive-tag">🚗 20 分鐘</span></p>
+        <p>➡ 坎莫爾 <span class="drive-tag">🚗 1 小時</span></p>
+        <p>➡ 班夫鎮 <span class="drive-tag">🚗 1.5 小時</span></p>
+      </div>
+    </div>
+
+    <div class="section-title">🏔 前往班夫國家公園</div>
+
+    <div class="location-card" onclick="flyTo('canmore')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#27ae60"></div>
+        <span class="loc-name">坎莫爾</span>
+        <span class="loc-name-en">Canmore</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 進入班夫前的小鎮，餐廳、住宿性價比高，山景壯觀</p>
+        <p>➡ 機場 <span class="drive-tag">🚗 1 小時</span></p>
+        <p>➡ 班夫鎮 <span class="drive-tag">🚗 20 分鐘</span></p>
+      </div>
+    </div>
+
+    <div class="location-card" onclick="flyTo('banff')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#16a085"></div>
+        <span class="loc-name">班夫鎮</span>
+        <span class="loc-name-en">Banff Town</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 班夫大道、硫磺山纜車、弓河瀑布、驚喜角觀景台</p>
+        <p>➡ 機場 <span class="drive-tag">🚗 1.5 小時</span></p>
+        <p>➡ 路易斯湖 <span class="drive-tag">🚗 50 分鐘</span></p>
+      </div>
+    </div>
+
+    <div class="location-card" onclick="flyTo('sulphur')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#16a085"></div>
+        <span class="loc-name">硫磺山纜車</span>
+        <span class="loc-name-en">Banff Gondola / Sulphur Mountain</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 搭纜車俯瞰班夫全景，山頂木棧道，海拔 2281m</p>
+        <p>班夫鎮內，距市中心 <span class="drive-tag">🚗 5 分鐘</span></p>
+      </div>
+    </div>
+
+    <div class="location-card" onclick="flyTo('surprise')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#16a085"></div>
+        <span class="loc-name">驚喜角觀景台</span>
+        <span class="loc-name-en">Surprise Corner Viewpoint</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 班夫最佳日落點，俯瞰班夫春宮大飯店與弓河，免費。</p>
+        <p>班夫鎮 <span class="drive-tag">🚗 3 分鐘</span></p>
+      </div>
+    </div>
+
+    <div class="location-card" onclick="flyTo('minnewanka')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#2980b9"></div>
+        <span class="loc-name">明尼萬卡湖</span>
+        <span class="loc-name-en">Lake Minnewanka</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 班夫最大湖泊，可搭遊船、划獨木舟、健行</p>
+        <p>➡ 班夫鎮 <span class="drive-tag">🚗 15 分鐘</span></p>
+      </div>
+    </div>
+
+    <div class="section-title">💙 路易斯湖區域</div>
+
+    <div class="location-card" onclick="flyTo('louise')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#2980b9"></div>
+        <span class="loc-name">路易斯湖</span>
+        <span class="loc-name-en">Lake Louise</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 翠綠湖水配冰川，全球最美湖泊之一，旁有費爾蒙城堡酒店</p>
+        <p>➡ 機場 <span class="drive-tag">🚗 2.5 小時</span></p>
+        <p>➡ 夢蓮湖 <span class="drive-tag">🚗 15 分鐘</span></p>
+        <p>⚠️ 夏季需提前 <strong>預訂停車</strong> 或搭接駁巴士（建議早於 6am 抵達或搭接駁）</p>
+      </div>
+    </div>
+
+    <div class="location-card" onclick="flyTo('moraine')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#8e44ad"></div>
+        <span class="loc-name">夢蓮湖</span>
+        <span class="loc-name-en">Moraine Lake</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 十峰倒影，藍綠色湖水，曾印在加幣上，比路易斯湖更震撼！</p>
+        <p>➡ 路易斯湖 <span class="drive-tag">🚗 15 分鐘</span></p>
+        <p>⚠️ <strong>夏季完全禁止自駕，僅能預約接駁巴士或拼車</strong>，需於2026年4月15日 8AM要搶接駁巴士</p>
+      </div>
+    </div>
+
+    <div class="section-title">🛣 冰原大道沿線</div>
+
+    <div class="location-card" onclick="flyTo('icefields')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#f39c12"></div>
+        <span class="loc-name">冰原大道</span>
+        <span class="loc-name-en">Icefields Parkway (Hwy 93N)</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 路易斯湖 → 賈斯珀，全長 230km，「世界最美公路」之一</p>
+        <p>沿途：弓湖、沛托湖、冰川、瀑布、麋鹿</p>
+        <p>全程不停 <span class="drive-tag">🚗 約 3.5 小時</span>，建議留一整天</p>
+      </div>
+    </div>
+
+    <div class="location-card" onclick="flyTo('bow')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#f39c12"></div>
+        <span class="loc-name">弓湖</span>
+        <span class="loc-name-en">Bow Lake</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 冰原大道第一個標誌性湖泊，湖畔有百年歷史小木屋</p>
+        <p>➡ 路易斯湖 <span class="drive-tag">🚗 40 分鐘</span></p>
+        <p>➡ 沛托湖 <span class="drive-tag">🚗 15 分鐘</span></p>
+      </div>
+    </div>
+
+    <div class="location-card" onclick="flyTo('peyto')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#e67e22"></div>
+        <span class="loc-name">沛托湖</span>
+        <span class="loc-name-en">Peyto Lake</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 狐狸形狀的湛藍湖泊，需爬 20 分鐘山路到觀景台</p>
+        <p>➡ 弓湖 <span class="drive-tag">🚗 15 分鐘</span></p>
+        <p>➡ 阿薩巴斯卡冰河 <span class="drive-tag">🚗 1.5 小時</span></p>
+      </div>
+    </div>
+
+    <div class="location-card" onclick="flyTo('sunwapta')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#e67e22"></div>
+        <span class="loc-name">森瓦普塔瀑布</span>
+        <span class="loc-name-en">Sunwapta Falls</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 雙層瀑布，水量豐沛，步行 5 分鐘即達，冰原大道必停點</p>
+        <p>➡ 阿薩巴斯卡冰河 <span class="drive-tag">🚗 30 分鐘</span></p>
+      </div>
+    </div>
+
+    <div class="location-card" onclick="flyTo('athabasca')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#d35400"></div>
+        <span class="loc-name">阿薩巴斯卡冰河</span>
+        <span class="loc-name-en">Athabasca Glacier / Columbia Icefield</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 哥倫比亞冰原上的冰河，可搭冰原雪車或健行至冰面</p>
+        <p>➡ 機場 <span class="drive-tag">🚗 約 4.5 小時</span></p>
+        <p>➡ 冰河天空步道 <span class="drive-tag">🚗 10 分鐘</span></p>
+      </div>
+    </div>
+
+    <div class="location-card" onclick="flyTo('skywalk')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#c0392b"></div>
+        <span class="loc-name">冰河天空步道</span>
+        <span class="loc-name-en">Glacier Skywalk</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 懸崖邊的玻璃地板步道，俯瞰森瓦普塔峽谷，高空感震撼</p>
+        <p>➡ 阿薩巴斯卡冰河 <span class="drive-tag">🚗 10 分鐘</span></p>
+        <p>➡ 賈斯珀 <span class="drive-tag">🚗 1 小時</span></p>
+      </div>
+    </div>
+
+    <div class="location-card" onclick="flyTo('jasper')">
+      <div class="loc-header">
+        <div class="loc-dot" style="background:#7f8c8d"></div>
+        <span class="loc-name">賈斯珀小鎮</span>
+        <span class="loc-name-en">Jasper Town</span>
+      </div>
+      <div class="loc-details">
+        <p>✨ 冰原大道北端終點，相對樸實的山城，暗天保護區</p>
+        <p>➡ 機場（卡加利） <span class="drive-tag">🚗 約 5.5 小時</span></p>
+        <p>➡ 機場（愛德蒙頓） <span class="drive-tag">🚗 約 4 小時</span></p>
+      </div>
+    </div>
+
+    <!-- Drive Matrix -->
+    <div class="section-title">⏱ 從坎莫爾出發車程速查</div>
+    <div class="matrix-section">
+      <table class="drive-matrix">
+        <tr>
+          <th>坎莫爾 → 目的地</th>
+          <th>車程</th>
+          <th>距離</th>
+        </tr>
+        <tr><td>坎莫爾 → 卡加利機場</td><td>~1 hr</td><td>~95 km</td></tr>
+        <tr><td>坎莫爾 → 班夫鎮</td><td>~20 min</td><td>~25 km</td></tr>
+        <tr><td>坎莫爾 → 明尼萬卡湖</td><td>~30 min</td><td>~35 km</td></tr>
+        <tr><td>坎莫爾 → 路易斯湖</td><td>~1.5 hr</td><td>~95 km</td></tr>
+        <tr><td>坎莫爾 → 夢蓮湖</td><td>~1.5 hr</td><td>~103 km</td></tr>
+        <tr><td>坎莫爾 → 弓湖</td><td>~2 hr</td><td>~130 km</td></tr>
+        <tr><td>坎莫爾 → 沛托湖</td><td>~2.5 hr</td><td>~145 km</td></tr>
+        <tr><td>坎莫爾 → 森瓦普塔瀑布</td><td>~3.5 hr</td><td>~245 km</td></tr>
+        <tr><td>坎莫爾 → 阿薩巴斯卡冰河</td><td>~3.5 hr</td><td>~265 km</td></tr>
+        <tr><td>坎莫爾 → 冰河天空步道</td><td>~3.5 hr</td><td>~271 km</td></tr>
+        <tr><td>坎莫爾 → 賈斯珀</td><td>~4.5 hr</td><td>~325 km</td></tr>
+      </table>
+
+      <table class="drive-matrix" style="margin-top:10px">
+        <tr>
+          <th>景點間移動</th>
+          <th>車程</th>
+          <th>距離</th>
+        </tr>
+        <tr><td>班夫鎮 → 路易斯湖</td><td>~50 min</td><td>~57 km</td></tr>
+        <tr><td>路易斯湖 → 夢蓮湖</td><td>~15 min</td><td>~14 km</td></tr>
+        <tr><td>路易斯湖 → 弓湖</td><td>~40 min</td><td>~40 km</td></tr>
+        <tr><td>弓湖 → 沛托湖</td><td>~15 min</td><td>~14 km</td></tr>
+        <tr><td>沛托湖 → 阿薩巴斯卡冰河</td><td>~1.5 hr</td><td>~120 km</td></tr>
+        <tr><td>阿薩巴斯卡冰河 → 天空步道</td><td>~10 min</td><td>~6 km</td></tr>
+        <tr><td>天空步道 → 賈斯珀</td><td>~1 hr</td><td>~55 km</td></tr>
+      </table>
+      <p class="note">* 車程為夏季正常路況估計，冬季可能大幅增加。夢蓮湖夏季禁止自駕，需搭接駁車。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const locations = {
+  yyc:       { lat: 51.1315, lng: -114.0106, name: "卡加利國際機場", en: "Calgary Airport (YYC)", color: "#e74c3c", tip: "所有行程的起點。出發前確認國家公園入園證（Discovery Pass）。" },
+  canmore:   { lat: 51.0884, lng: -115.3476, name: "坎莫爾", en: "Canmore", color: "#27ae60", tip: "班夫門戶小鎮，住宿和餐廳比班夫便宜，山景絕美。" },
+  banff:     { lat: 51.1784, lng: -115.5708, name: "班夫鎮", en: "Banff Town", color: "#16a085", tip: "班夫大道購物、餐廳，驚喜角日落，溫泉（Upper Hot Springs）。" },
+  minnewanka:{ lat: 51.2077, lng: -115.4684, name: "明尼萬卡湖", en: "Lake Minnewanka", color: "#2980b9", tip: "班夫最大湖，遊船、獨木舟、健行，偶爾可見大角羊。" },
+  louise:    { lat: 51.4160, lng: -116.2187, name: "路易斯湖", en: "Lake Louise", color: "#2980b9", tip: "翠綠湖配維多利亞冰河，費爾蒙城堡酒店。夏季需預約停車/接駁。" },
+  moraine:   { lat: 51.3217, lng: -116.1860, name: "夢蓮湖", en: "Moraine Lake", color: "#8e44ad", tip: "十峰倒影，藍綠色湖水，曾印在舊版加幣。夏季僅接駁車進入。" },
+  icefields:  { lat: 51.9, lng: -116.85, name: "冰原大道（中段）", en: "Icefields Parkway", color: "#f39c12", tip: "Hwy 93N 全長 230km，路易斯湖至賈斯珀，世界最美公路之一。" },
+  bow:       { lat: 51.6703, lng: -116.4703, name: "弓湖", en: "Bow Lake", color: "#f39c12", tip: "冰原大道第一個標誌性湖，湖畔有 Num-Ti-Jah Lodge（1920s 建）。" },
+  peyto:     { lat: 51.7239, lng: -116.5310, name: "沛托湖", en: "Peyto Lake", color: "#e67e22", tip: "狐狸形狀的湖，爬 20 分鐘到觀景台，湖色湛藍如寶石。" },
+  sunwapta:  { lat: 52.0588, lng: -117.1897, name: "森瓦普塔瀑布", en: "Sunwapta Falls", color: "#e67e22", tip: "雙層瀑布，停車場到瀑布步行 5 分鐘，水量豐沛壯觀。" },
+  athabasca: { lat: 52.1900, lng: -117.2300, name: "阿薩巴斯卡冰河", en: "Athabasca Glacier", color: "#d35400", tip: "哥倫比亞冰原最易達的冰舌，可搭冰原雪車或步行至冰面（需嚮導）。" },
+  skywalk:   { lat: 52.2175, lng: -117.2736, name: "冰河天空步道", en: "Glacier Skywalk", color: "#c0392b", tip: "懸崖玻璃地板步道，俯瞰 280m 深的森瓦普塔峽谷，需購票。" },
+  jasper:    { lat: 52.8737, lng: -118.0814, name: "賈斯珀小鎮", en: "Jasper Town", color: "#7f8c8d", tip: "暗天保護區，適合觀星。馬林湖、天使冰河等周邊景點豐富。" }
+};
+
+// Icefields Parkway route points
+const icefieldsParkway = [
+  [51.4160, -116.2187], // Lake Louise
+  [51.5200, -116.3100],
+  [51.6703, -116.4703], // Bow Lake
+  [51.7239, -116.5310], // Peyto Lake
+  [51.9000, -116.8500],
+  [52.0588, -117.1897], // Sunwapta Falls
+  [52.1900, -117.2300], // Athabasca Glacier
+  [52.2175, -117.2736], // Skywalk
+  [52.4500, -117.6000],
+  [52.8737, -118.0814]  // Jasper
+];
+
+const map = L.map('map').setView([51.8, -115.8], 8);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors',
+  maxZoom: 18
+}).addTo(map);
+
+// Draw Icefields Parkway
+L.polyline(icefieldsParkway, {
+  color: '#f39c12',
+  weight: 4,
+  opacity: 0.7,
+  dashArray: '10, 6'
+}).addTo(map).bindPopup('<b>冰原大道</b><br>Icefields Parkway (Hwy 93N)<br>路易斯湖 → 賈斯珀，全長 230km');
+
+// Draw Calgary to Banff highway (Hwy 1)
+const hwy1 = [
+  [51.1315, -114.0106], // YYC
+  [51.0500, -114.2000],
+  [51.0884, -115.3476], // Canmore
+  [51.1784, -115.5708], // Banff
+  [51.3000, -115.8500],
+  [51.4160, -116.2187]  // Lake Louise
+];
+L.polyline(hwy1, {
+  color: '#3498db',
+  weight: 3,
+  opacity: 0.6,
+  dashArray: '8, 4'
+}).addTo(map).bindPopup('<b>1 號公路（橫加公路）</b><br>卡加利 → 路易斯湖');
+
+// Draw Moraine Lake road
+L.polyline([
+  [51.4160, -116.2187],
+  [51.3700, -116.2200],
+  [51.3217, -116.1860]
+], { color: '#8e44ad', weight: 3, opacity: 0.7 }).addTo(map);
+
+// Add markers
+const markers = {};
+Object.entries(locations).forEach(([key, loc]) => {
+  const icon = L.divIcon({
+    className: '',
+    html: `<div style="
+      width: 14px; height: 14px;
+      background: ${loc.color};
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    "></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7]
+  });
+
+  const marker = L.marker([loc.lat, loc.lng], { icon })
+    .addTo(map)
+    .bindPopup(`
+      <div class="popup-title">${loc.name}</div>
+      <div class="popup-en">${loc.en}</div>
+      <div class="popup-body">${loc.tip}</div>
+    `);
+
+  // Add label
+  L.marker([loc.lat, loc.lng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="
+        font-size: 11px;
+        font-weight: bold;
+        color: #1a1a1a;
+        white-space: nowrap;
+        margin-left: 10px;
+        margin-top: -7px;
+        text-shadow: 0 0 3px white, 0 0 3px white, 0 0 3px white, 0 0 3px white;
+      ">${loc.name}</div>`,
+      iconAnchor: [0, 6]
+    })
+  }).addTo(map);
+
+  markers[key] = marker;
+});
+
+function flyTo(key) {
+  const loc = locations[key];
+  map.flyTo([loc.lat, loc.lng], 12, { duration: 1.2 });
+  markers[key].openPopup();
+}
+
+// Legend
+const legend = L.control({ position: 'bottomleft' });
+legend.onAdd = () => {
+  const div = L.DomUtil.create('div');
+  div.style.cssText = 'background:white;padding:10px 14px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-size:12px;line-height:1.8';
+  div.innerHTML = `
+    <b style="font-size:13px;">圖例</b><br>
+    <span style="color:#3498db">───</span> 1號公路（卡加利↔路易斯湖）<br>
+    <span style="color:#f39c12">- - -</span> 冰原大道（路易斯湖↔賈斯珀）<br>
+    <span style="color:#8e44ad">───</span> 夢蓮湖支線<br>
+    <br>
+    <b>點擊地標查看詳情</b>
+  `;
+  return div;
+};
+legend.addTo(map);
+</script>
+</body>
+</html>
